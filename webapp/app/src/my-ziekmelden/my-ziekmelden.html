@@ -1,0 +1,117 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-styles/typography.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+
+<!-- Dit element wordt door de aanwezigheid van de c_visible parameter steeds opnieuw gerefreshed
+     op het moment dat het element in de iron-pages geselecteerd wordt
+     en ook zodra hij weer gedeselecteerd wordt.
+     Deze techniek is bruikbaar om volatile info steeds opnieuw op te halen en niet enkel eenmalig
+     bij start van de applicatie.
+-->
+
+<dom-module id="my-ziekmelden">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      :root {
+        --paper-input-container-focus-color: #1a9fd9; /* kind of blue */
+      }
+
+      span {
+        @apply(--paper-font-body1);
+      }
+      .toast-button {
+        text-transform: none;
+        color: white;                           /* white tekst */
+        background: #1a9fd9;                    /* kind of blue */
+        --paper-button-ink-color: #00567B;      /* kind of dark blue */
+      }
+      .my-title {
+        font-size: 20px;
+        color: blue;
+        border-bottom: 1px solid red;           /* a red line */
+        padding-bottom: 2px;                    /* space above the border line */
+      }
+      .my-button {
+        width: 100%;                        /* full width */
+        color: white;                       /* white tekst */
+        background: #1a9fd9;                /* kind of blue */
+        --paper-button-ink-color: #00567B;  /* kind of dark blue */
+        margin-top: 5px;                    /* enlarge thet default */
+        margin-left: 0px;                   /* reduce the default */
+      }
+    </style>
+
+    <paper-toast
+      id="toast_invalid_aanroep"
+      duration="0"
+      text="U hebt dit scherm op een illegale manier geactiveerd. U wordt verwezen naar de home page!">
+        <paper-button on-click="_toast_clicked" class="toast-button">Sluiten</paper-button>
+    </paper-toast>
+
+    <div class="my-title">Ziekmelden van [[c_username]]</div>
+
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+      /* _xxxx private              : geen external data binding      - geen notify
+         _c_xx private constant     : geen external binding, constant - geen notify
+         c_xx  public constant      : one way external databinding [[c_xx]] - geen notify nodig
+         xxxx  public               : two way external databinding {{xxxx}} - notify nodig
+      */
+      Polymer({
+        is: 'my-ziekmelden',
+
+        properties: {
+          c_rol: {
+            type: String,
+          },
+          c_username: {
+            type: String,
+          },
+          c_visible: {
+            type: Boolean,                                      /* true when element is the active visible item */
+            value: false,
+            observer: '_initializing',                          /* wordt ook aangeroepen bijwisseling van true naar false.
+                                                                   regel in de functie dat er niets gebeurd
+                                                                   als c_visible false is */
+          },
+        },
+
+        _go_home: function() {
+          var lApp = document.querySelector('my-app');  //het polymer element <my-app>
+          var lAppRouter = lApp.$.approuter;            // het html-element <app-route> met id=approuter
+          lAppRouter.data={page: ""};                   // vul het data attribute met de homepage url
+                                                        // door de two way binding in <app-route> en <app-location>
+                                                        // zal ook de url echt wijzigen
+        },
+        
+        _initializing : function() {
+          if (this.c_visible) {                                 // zodra zichtbaar geworden moet er wat worden gedaan
+            if (this.c_rol=="student") {                        // voor studenten
+              // Hier info ophalen							    //    haal info op van server
+            } else {                                            // na handmatige url wijziging zonder login
+              var lToast = this.$.toast_invalid_aanroep;        // meldt ongeldige aanroep
+              lToast.open();                                    /* het sluiten van deze error verwijst  */
+                                                                /* terug naar home page */
+            }
+          }
+        },
+
+       _toast_clicked: function(e) {
+         var lToast = this.$.toast_invalid_aanroep;        // meldt ongeldige aanroep
+         lToast.toggle();
+         this._go_home();
+        },
+
+      });
+    })();
+  </script>
+</dom-module>
