@@ -37,6 +37,21 @@
         border-bottom: 1px solid red;           /* a red line */
         padding-bottom: 2px;                    /* space above the border line */
       }
+      .voornaam {
+        min-width: 100px;
+        text-align: left;
+       }
+      .achternaam {
+        min-width: 100px;
+        text-align: left;
+      }
+      .groepid-header {
+        min-width: 100px;
+        text-align: left;
+      }
+      .groepid{
+        min-width: 100px;
+      }
       .my-button {
         width: 100%;                        /* full width */
         color: white;                       /* white tekst */
@@ -55,6 +70,25 @@
     </paper-toast>
 
     <div class="my-title">Presentie bijwerken</div>
+    
+    <table>
+      <tr>
+        <th class="voornaam">Voornaam</th>
+        <th class="achternaam">Achternaam</th>
+        <th class="aanwezig-header">Aanwezig</th>
+      </tr>
+      <template is="dom-repeat" items="[[_c_studenten]]">
+        <tr>
+          <td class="voornaam">  <a href$="#/student/details/[[item.firstName]]-[[item.lastName]]">[[item.firstName]]</a></td>
+          <td class="achternaam"><a href$="#/student/details/[[item.firstName]]-[[item.lastName]]">[[item.lastName]] </a></td>
+          <td class="groepid">
+             <paper-checkbox
+              class="my-check">
+            </paper-checkbox>
+      	  </td>
+        </tr>
+      </template>
+    </table>
 
   </template>
 
@@ -70,6 +104,10 @@
         is: 'my-docent-presentie',
 
         properties: {
+          _c_studenten: {
+            type: Array,           /* array<student-info>: student-info = {id, firstName, lastName, sameGroup} 
+    										array is constant groepnr is changable */
+          },
           c_rol: {
             type: String,
           },
