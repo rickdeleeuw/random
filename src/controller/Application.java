@@ -34,13 +34,23 @@ public class Application {
 		SysteemDatumController systeemDatumController = new SysteemDatumController(infoSysteem);
 		LoginController loginController = new LoginController(infoSysteem);
 		MedestudentenController medestudentenController = new MedestudentenController(infoSysteem);
+		PresentieController presentieController = new PresentieController(infoSysteem);
 		
 		server.registerHandler("/systeemdatum/lesinfo", systeemDatumController);
 
 		server.registerHandler("/login", loginController);
 
-  	server.registerHandler("/student/medestudenten/ophalen", medestudentenController);
-  	server.registerHandler("/student/medestudenten/opslaan", medestudentenController);
+		server.registerHandler("/docent/vakken/ophalen", presentieController);
+		
+		server.registerHandler("/docent/klassen/ophalen", presentieController);
+		
+		server.registerHandler("/docent/presentie/ophalen", presentieController);
+		
+		server.registerHandler("/docent/studenten/ophalen", presentieController);
+		
+		server.registerHandler("/student/medestudenten/ophalen", medestudentenController);
+		
+		server.registerHandler("/student/medestudenten/opslaan", medestudentenController);
 		
 		server.start();
 	}

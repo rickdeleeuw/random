@@ -1,0 +1,309 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-styles/typography.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+
+<!-- Dit element wordt door de aanwezigheid van de c_visible parameter steeds opnieuw gerefreshed
+     op het moment dat het element in de iron-pages geselecteerd wordt
+     en ook zodra hij weer gedeselecteerd wordt.
+     Deze techniek is bruikbaar om volatile info steeds opnieuw op te halen en niet enkel eenmalig
+     bij start van de applicatie.
+-->
+
+<dom-module id="my-docent-presentie">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      :root {
+        --paper-input-container-focus-color: #1a9fd9; /* kind of blue */
+      }
+
+      span {
+        @apply(--paper-font-body1);
+      }
+      .toast-button {
+        text-transform: none;
+        color: white;                           /* white tekst */
+        background: #1a9fd9;                    /* kind of blue */
+        --paper-button-ink-color: #00567B;      /* kind of dark blue */
+      }
+      .my-title {
+        font-size: 20px;
+        color: blue;
+        border-bottom: 1px solid red;           /* a red line */
+        padding-bottom: 2px;                    /* space above the border line */
+      }
+      .voornaam {
+        min-width: 100px;
+        text-align: left;
+       }
+      .achternaam {
+        min-width: 100px;
+        text-align: left;
+      }
+      .my-button {
+        width: 100%;                        /* full width */
+        color: white;                       /* white tekst */
+        background: #1a9fd9;                /* kind of blue */
+        --paper-button-ink-color: #00567B;  /* kind of dark blue */
+        margin-top: 5px;                    /* enlarge thet default */
+        margin-left: 0px;                   /* reduce the default */
+      }
+      paper-dropdown-menu, paper-listbox {
+   	  	width: 250px;
+	  }
+	  /*paper-dropdown-menu {
+ 	  	height: 200px;
+   		display: block;
+  	  }*/
+    </style>
+
+    <paper-toast
+      id="toast_invalid_aanroep"
+      duration="0"
+      text="U hebt dit scherm op een illegale manier geactiveerd. U wordt verwezen naar de home page!">
+        <paper-button on-click="_toast_clicked" class="toast-button">Sluiten</paper-button>
+    </paper-toast>
+
+    <div class="my-title">Presentie bijwerken</div>
+    
+    <paper-dropdown-menu label="Vak">
+  	  <paper-listbox class="dropdown-content">
+  	    <template is="dom-repeat" id="vakkenLijst" items="[[_c_vakken]]">
+      	  <paper-item on-tap="vakSelected">[[item.vakCode]]</paper-item>
+    	</template>
+	  </paper-listbox>
+	</paper-dropdown-menu>
+	
+    <paper-dropdown-menu label="Klas">
+  	  <paper-listbox class="dropdown-content">
+  	    <template is="dom-repeat" id="klassenLijst" items="[[_c_klassen]]">
+      	  <paper-item on-tap="klasSelected">[[item.klasCode]]</paper-item>
+    	</template>
+	  </paper-listbox>
+	</paper-dropdown-menu>
+    
+    <div>vak: [[_vak_selected.vakCode]], klas: [[_klas_selected.klasCode]]</div>
+    <div>presenties:[[_c_presenties]]</div>
+    <table id="table">
+      <tr>
+      	<th class="studentnummer">Studentnummer</th>
+        <th class="voornaam">Voornaam</th>
+        <th class="achternaam">Achternaam</th>
+        <template is="dom-repeat" items="[[_c_presenties]]">
+          <th class="aanwezig-header">[[item.datum]]</th>
+        </template>
+      </tr>
+      <template is="dom-repeat" items="[[_c_studenten]]">
+        <tr>
+          <td class="studentnummer">[[item.id]]</td>
+          <td class="voornaam">[[item.firstName]]</td>
+          <td class="achternaam">[[item.lastName]]</td>
+          <template is="dom-repeat" items="[[_c_presenties]]">
+            <td class="groepid">
+              <paper-checkbox checked class="my-check"></paper-checkbox>
+      	    </td>
+      	  </template>
+        </tr>
+      </template>
+    </table>
+	
+	<paper-button
+		class="my-button">Opslaan
+	</paper-button>
+	
+    <iron-ajax
+      id="ajax_vakken_ophalen"
+      method="POST"
+      url="/docent/vakken/ophalen"
+      handle-as="json"
+      on-response="_vakken_ophalen_response_handler">
+    </iron-ajax>
+    
+    <iron-ajax
+      id="ajax_klassen_ophalen"
+      method="POST"
+      url="/docent/klassen/ophalen"
+      handle-as="json"
+      on-response="_klassen_ophalen_response_handler">
+    </iron-ajax>
+    
+    <iron-ajax
+      id="ajax_presentie_ophalen"
+      method="POST"
+      url="/docent/presentie/ophalen"
+      handle-as="json"
+      on-response="_presentie_ophalen_response_handler">
+    </iron-ajax>
+    
+    <iron-ajax
+      id="ajax_studenten_ophalen"
+      method="POST"
+      url="/docent/studenten/ophalen"
+      handle-as="json"
+      on-response="_studenten_ophalen_response_handler">
+    </iron-ajax>
+	
+  </template>
+
+  <script>
+    (function() {
+      'use strict';
+      /* _xxxx private              : geen external data binding      - geen notify
+         _c_xx private constant     : geen external binding, constant - geen notify
+         c_xx  public constant      : one way external databinding [[c_xx]] - geen notify nodig
+         xxxx  public               : two way external databinding {{xxxx}} - notify nodig
+      */
+      Polymer({
+        is: 'my-docent-presentie',
+
+        properties: {
+          _c_vakken: {
+        	type: Array,
+          },
+          _vak_selected : {
+        	  type: Object
+          },
+          _klas_selected : {
+        	  type: Object
+          },
+          _c_klassen: {
+        	  type: Array,
+          },
+          _c_presenties: {
+        	  type: Array,
+          },
+          _c_studenten: {
+        	  type: Array,
+          },
+          c_rol: {
+            type: String,
+          },
+          c_username: {
+            type: String,
+            value: "[[c_username]]",
+          },
+          c_visible: {
+            type: Boolean,                                      /* true when element is the active visible item */
+            value: false,
+            observer: '_initializing',                          /* wordt ook aangeroepen bijwisseling van true naar false.
+                                                                   regel in de functie dat er niets gebeurd
+                                                                   als c_visible false is */
+          },
+        },
+
+        _go_home: function() {
+          var lApp = document.querySelector('my-app');  //het polymer element <my-app>
+          var lAppRouter = lApp.$.approuter;            // het html-element <app-route> met id=approuter
+          lAppRouter.data={page: ""};                   // vul het data attribute met de homepage url
+                                                        // door de two way binding in <app-route> en <app-location>
+                                                        // zal ook de url echt wijzigen
+        },
+        
+        _initializing : function() {
+          if (this.c_visible) {                                 // zodra zichtbaar geworden moet er wat worden gedaan
+            if (this.c_rol=="docent") {                     	// voor studenten
+              this._vakken_ophalen_request_handler();		    // haal info op van server
+            } else {                                            // na handmatige url wijziging zonder login
+              var lToast = this.$.toast_invalid_aanroep;        // meldt ongeldige aanroep
+              lToast.open();                                    /* het sluiten van deze error verwijst  */
+                                                                /* terug naar home page */
+            }
+          }
+        },
+        
+        vakSelected: function(e) {
+        	if (this._vak_selected != this.$.vakkenLijst.itemForElement(e.target)) {
+         		this._klas_selected = null;
+         		this.$.table.hidden = true;
+         	}
+        	this._vak_selected = this.$.vakkenLijst.itemForElement(e.target);
+         	this._klassen_ophalen_request_handler();
+        },
+        
+        klasSelected: function(e) {
+        	this._klas_selected = this.$.klassenLijst.itemForElement(e.target);
+        	console.log("klasSelected: " + this.$.klassenLijst.itemForElement(e.target).klasCode);
+        	this._presentie_ophalen_request_handler();
+        	this._studenten_ophalen_request_handler();
+        	this.$.table.hidden = false;
+        },
+        
+        _vakken_ophalen_request_handler: function() {
+          console.log("_vakken_ophalen_request_handler user="+this.c_username);
+          this.$.ajax_vakken_ophalen.contentType="application/json";
+          this.$.ajax_vakken_ophalen.body={
+            "username":this.c_username
+          };
+          this.$.ajax_vakken_ophalen.generateRequest();
+        },
+        
+        _vakken_ophalen_response_handler: function(request) {
+          console.log("_vakken_ophalen_response_handler aantal vakken="+request.detail.response.length);
+          this._c_vakken= request.detail.response;
+        },
+        
+        _klassen_ophalen_request_handler: function() {
+            console.log("_klassen_ophalen_request_handler user: " + this.c_username
+            		+ " vakCode: " + this._vak_selected.vakCode);
+            this.$.ajax_klassen_ophalen.contentType="application/json";
+            this.$.ajax_klassen_ophalen.body={
+              "username":this.c_username,
+              "vakCode":this._vak_selected.vakCode
+            };
+          this.$.ajax_klassen_ophalen.generateRequest();
+        },
+          
+        _klassen_ophalen_response_handler: function(request) {
+          console.log("_klassen_ophalen_response_handler aantal klassen="+request.detail.response.length);
+          this._c_klassen= request.detail.response;
+        },
+        
+        _presentie_ophalen_request_handler: function() {
+            console.log("vakCode: " + this._vak_selected.vakCode
+            		+ " klasCode: " + this._klas_selected.klasCode);
+            this.$.ajax_presentie_ophalen.contentType="application/json";
+            this.$.ajax_presentie_ophalen.body={
+              "vakCode": this._vak_selected.vakCode,
+              "klasCode": this._klas_selected.klasCode
+            };
+            console.log("_presentie_ophalen_request_handler")
+          this.$.ajax_presentie_ophalen.generateRequest();
+        },
+          
+        _presentie_ophalen_response_handler: function(request) {
+          console.log("_presentie_ophalen_response_handler aantal presenties="+request.detail.response.length);
+          this._c_presenties = request.detail.response;
+        },
+        
+        _studenten_ophalen_request_handler: function() {
+            console.log("klasCode: " + this._klas_selected.klasCode);
+            this.$.ajax_studenten_ophalen.contentType="application/json";
+            this.$.ajax_studenten_ophalen.body={
+              "klasCode": this._klas_selected.klasCode
+            };
+          this.$.ajax_studenten_ophalen.generateRequest();
+        },
+          
+        _studenten_ophalen_response_handler: function(request) {
+          console.log("_studenten_ophalen_response_handler aantal studenten="+request.detail.response.length);
+          this._c_studenten = request.detail.response;
+        },
+
+       _toast_clicked: function(e) {
+         var lToast = this.$.toast_invalid_aanroep;        // meldt ongeldige aanroep
+         lToast.toggle();
+         this._go_home();
+        },
+
+      });
+    })();
+  </script>
+</dom-module>

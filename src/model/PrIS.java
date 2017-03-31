@@ -3,8 +3,11 @@ package model;
 import java.util.ArrayList;
 
 import model.klas.Klas;
+import model.les.Les;
 import model.persoon.Docent;
 import model.persoon.Student;
+import model.presentie.Presentie;
+import model.vak.Vak;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -14,12 +17,17 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Calendar;
 
 public class PrIS {
 	private ArrayList<Docent> deDocenten;
 	private ArrayList<Student> deStudenten;
 	private ArrayList<Klas> deKlassen;
+	private ArrayList<Vak> deVakken;
+	private ArrayList<Les> deLessen;
+	private ArrayList<Presentie> dePresenties;
 	
 	/**
 	 * De constructor maakt een set met standaard-data aan. Deze data
@@ -48,7 +56,10 @@ public class PrIS {
 		deDocenten = new ArrayList<Docent>();
 		deStudenten = new ArrayList<Student>();
 		deKlassen = new ArrayList<Klas>();
-
+		deVakken = new ArrayList<Vak>();
+		deLessen = new ArrayList<Les>();
+		dePresenties = new ArrayList<Presentie>();
+		
 		// Inladen klassen
 		vulKlassen(deKlassen);
 
@@ -57,7 +68,13 @@ public class PrIS {
 
 		// Inladen docenten
 		vulDocenten(deDocenten);
-	
+		
+		// Inladen vakken
+		vulVakken(deVakken);
+		
+		// Inladen lessen
+		vulLessen(deLessen);
+		
 	} //Einde Pris constructor
 	
 	//deze method is static onderdeel van PrIS omdat hij als hulp methode 
@@ -176,15 +193,16 @@ public class PrIS {
 		try {
 	
 			br = new BufferedReader(new FileReader(csvFile));
+			int docentNummer = 0;
 			while ((line = br.readLine()) != null) {
-	
+				docentNummer += 1;
 			        // use comma as separator
 				String[] element = line.split(cvsSplitBy);
 				String gebruikersnaam = element[0].toLowerCase();
 				String voornaam = element[1];
 				String tussenvoegsel = element[2];
 				String achternaam = element[3];
-				pDocenten.add(new Docent(voornaam, tussenvoegsel, achternaam, "geheim", gebruikersnaam, 1));
+				pDocenten.add(new Docent(voornaam, tussenvoegsel, achternaam, "geheim", gebruikersnaam, docentNummer));
 				
 				//System.out.println(gebruikersnaam);
 		
@@ -268,7 +286,106 @@ public class PrIS {
 			}	
 			
 		}
+	}
+	
+	private void vulVakken(ArrayList<Vak> pVakken) {
+		//TCIF-V1AUI-15_2016 is de vakcode die ook in de rooster file voorkomt
+		//AUI is de naam van het vak
+		Vak v1 = new Vak("TCIF-V1AUI-15_2016", "AUI");
+		Vak v2 = new Vak("TICT-V1GP-15_2016", "GP");
+		Vak v3 = new Vak("TICT-V1OODC-15_2016", "OODC");
+		
+		pVakken.add(v1);
+		pVakken.add(v2);
+		pVakken.add(v3);
 	}	
 
+	private void vulLessen(ArrayList<Les> pLessen) {
+		String csvFile = "././CSV/rooster.csv";
+		BufferedReader br = null;
+		String line = "";
+		String cvsSplitBy = ",";
+			
+		try {
+	
+			br = new BufferedReader(new FileReader(csvFile));
+			while ((line = br.readLine()) != null) {
+	
+			        // use comma as separator
+				String[] element = line.split(cvsSplitBy);
+				
+				String datumString = element[0];
+				String[] datumStringElement = datumString.split("-");
+				int year = Integer.parseInt(datumStringElement[0]);
+				int month = Integer.parseInt(datumStringElement[1]);
+				int date = Integer.parseInt(datumStringElement[2]);
+				LocalDate datum = LocalDate.of(year, month, date);
+				
+				String beginTijdString = element[1];
+				String[] beginTijdStringElement = beginTijdString.split(":");
+				int beginTijdHour = Integer.parseInt(beginTijdStringElement[0]);
+				int beginTijdMinute = Integer.parseInt(beginTijdStringElement[1]);
+				LocalTime beginTijd = LocalTime.of(beginTijdHour, beginTijdMinute);
+				
+				String eindTijdString = element[2];
+				String[] eindTijdStringElement = eindTijdString.split(":");
+				int eindTijdHour = Integer.parseInt(eindTijdStringElement[0]);
+				int eindTijdMinute = Integer.parseInt(eindTijdStringElement[1]);
+				LocalTime eindTijd = LocalTime.of(eindTijdHour, eindTijdMinute);
+				
+				String hetVakString = element[3];
+				Vak hetVak = null;
+				for (Vak v : deVakken) {
+					if (hetVakString.equals(v.getVakCode())) {
+						hetVak = v;
+					}
+				}
+				
+				String deDocentString = element[4];
+				Docent deDocent = null;
+				for (Docent d : deDocenten) {
+					if (deDocentString.equals(d.getGebruikersnaam())) {
+						deDocent = d;
+					}
+				}
+				
+				String lokaal = element[5];
 
+				String deKlasString = element[6];
+				Klas deKlas = null;
+				for (Klas k : deKlassen) {
+					if (deKlasString.equals(k.getKlasCode())) {
+						deKlas = k;
+					}
+				}
+				
+				pLessen.add(new Les(datum, beginTijd, eindTijd, hetVak, deDocent, lokaal, deKlas));		
+			}
+	
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			if (br != null) {
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	public ArrayList<Les> getDeLessen() {
+		return deLessen;
+	}
+	
+	public ArrayList<Vak> getDeVakken() {
+		return deVakken;
+	}
+	
+	public ArrayList<Klas> getDeKlassen() {
+		return deKlassen;
+	}
 }

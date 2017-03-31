@@ -41,5 +41,16 @@ public class Klas {
 			this.getStudenten().add(pStudent);
 		}
 	}
-
+	
+	public boolean equals(Object andereObj) {
+		boolean gelijkeObjecten = false;
+		if (andereObj instanceof Klas) {
+			Klas andereKlas = (Klas) andereObj;
+			if (this.klasCode.equals(andereKlas.klasCode) &&
+					this.naam.equals(andereKlas.naam)) {
+				gelijkeObjecten = true;
+			}
+		}
+		return gelijkeObjecten;
+	}
 }
