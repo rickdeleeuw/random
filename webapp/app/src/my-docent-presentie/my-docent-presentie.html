@@ -2,6 +2,9 @@
 <link rel="import" href="../../bower_components/paper-styles/typography.html">
 <link rel="import" href="../../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../../bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
 <link rel="import" href="../../bower_components/paper-toast/paper-toast.html">
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
 
@@ -45,13 +48,6 @@
         min-width: 100px;
         text-align: left;
       }
-      .groepid-header {
-        min-width: 100px;
-        text-align: left;
-      }
-      .groepid{
-        min-width: 100px;
-      }
       .my-button {
         width: 100%;                        /* full width */
         color: white;                       /* white tekst */
@@ -60,6 +56,13 @@
         margin-top: 5px;                    /* enlarge thet default */
         margin-left: 0px;                   /* reduce the default */
       }
+      paper-dropdown-menu, paper-listbox {
+   	  	width: 250px;
+	  }
+	  /*paper-dropdown-menu {
+ 	  	height: 200px;
+   		display: block;
+  	  }*/
     </style>
 
     <paper-toast
@@ -71,25 +74,83 @@
 
     <div class="my-title">Presentie bijwerken</div>
     
-    <table>
+    <paper-dropdown-menu label="Vak">
+  	  <paper-listbox class="dropdown-content">
+  	    <template is="dom-repeat" id="vakkenLijst" items="[[_c_vakken]]">
+      	  <paper-item on-tap="vakSelected">[[item.vakCode]]</paper-item>
+    	</template>
+	  </paper-listbox>
+	</paper-dropdown-menu>
+	
+    <paper-dropdown-menu label="Klas">
+  	  <paper-listbox class="dropdown-content">
+  	    <template is="dom-repeat" id="klassenLijst" items="[[_c_klassen]]">
+      	  <paper-item on-tap="klasSelected">[[item.klasCode]]</paper-item>
+    	</template>
+	  </paper-listbox>
+	</paper-dropdown-menu>
+    
+    <div>vak: [[_vak_selected.vakCode]], klas: [[_klas_selected.klasCode]]</div>
+    <div>presenties:[[_c_presenties]]</div>
+    <table id="table">
       <tr>
+      	<th class="studentnummer">Studentnummer</th>
         <th class="voornaam">Voornaam</th>
         <th class="achternaam">Achternaam</th>
-        <th class="aanwezig-header">Aanwezig</th>
+        <template is="dom-repeat" items="[[_c_presenties]]">
+          <th class="aanwezig-header">[[item.datum]]</th>
+        </template>
       </tr>
       <template is="dom-repeat" items="[[_c_studenten]]">
         <tr>
-          <td class="voornaam">  <a href$="#/student/details/[[item.firstName]]-[[item.lastName]]">[[item.firstName]]</a></td>
-          <td class="achternaam"><a href$="#/student/details/[[item.firstName]]-[[item.lastName]]">[[item.lastName]] </a></td>
-          <td class="groepid">
-             <paper-checkbox
-              class="my-check">
-            </paper-checkbox>
-      	  </td>
+          <td class="studentnummer">[[item.id]]</td>
+          <td class="voornaam">[[item.firstName]]</td>
+          <td class="achternaam">[[item.lastName]]</td>
+          <template is="dom-repeat" items="[[_c_presenties]]">
+            <td class="groepid">
+              <paper-checkbox checked class="my-check"></paper-checkbox>
+      	    </td>
+      	  </template>
         </tr>
       </template>
     </table>
-
+	
+	<paper-button
+		class="my-button">Opslaan
+	</paper-button>
+	
+    <iron-ajax
+      id="ajax_vakken_ophalen"
+      method="POST"
+      url="/docent/vakken/ophalen"
+      handle-as="json"
+      on-response="_vakken_ophalen_response_handler">
+    </iron-ajax>
+    
+    <iron-ajax
+      id="ajax_klassen_ophalen"
+      method="POST"
+      url="/docent/klassen/ophalen"
+      handle-as="json"
+      on-response="_klassen_ophalen_response_handler">
+    </iron-ajax>
+    
+    <iron-ajax
+      id="ajax_presentie_ophalen"
+      method="POST"
+      url="/docent/presentie/ophalen"
+      handle-as="json"
+      on-response="_presentie_ophalen_response_handler">
+    </iron-ajax>
+    
+    <iron-ajax
+      id="ajax_studenten_ophalen"
+      method="POST"
+      url="/docent/studenten/ophalen"
+      handle-as="json"
+      on-response="_studenten_ophalen_response_handler">
+    </iron-ajax>
+	
   </template>
 
   <script>
@@ -104,15 +165,30 @@
         is: 'my-docent-presentie',
 
         properties: {
+          _c_vakken: {
+        	type: Array,
+          },
+          _vak_selected : {
+        	  type: Object
+          },
+          _klas_selected : {
+        	  type: Object
+          },
+          _c_klassen: {
+        	  type: Array,
+          },
+          _c_presenties: {
+        	  type: Array,
+          },
           _c_studenten: {
-            type: Array,           /* array<student-info>: student-info = {id, firstName, lastName, sameGroup} 
-    										array is constant groepnr is changable */
+        	  type: Array,
           },
           c_rol: {
             type: String,
           },
           c_username: {
             type: String,
+            value: "[[c_username]]",
           },
           c_visible: {
             type: Boolean,                                      /* true when element is the active visible item */
@@ -134,13 +210,91 @@
         _initializing : function() {
           if (this.c_visible) {                                 // zodra zichtbaar geworden moet er wat worden gedaan
             if (this.c_rol=="docent") {                     	// voor studenten
-              // Hier info ophalen							    //    haal info op van server
+              this._vakken_ophalen_request_handler();		    // haal info op van server
             } else {                                            // na handmatige url wijziging zonder login
               var lToast = this.$.toast_invalid_aanroep;        // meldt ongeldige aanroep
               lToast.open();                                    /* het sluiten van deze error verwijst  */
                                                                 /* terug naar home page */
             }
           }
+        },
+        
+        vakSelected: function(e) {
+        	if (this._vak_selected != this.$.vakkenLijst.itemForElement(e.target)) {
+         		this._klas_selected = null;
+         		this.$.table.hidden = true;
+         	}
+        	this._vak_selected = this.$.vakkenLijst.itemForElement(e.target);
+         	this._klassen_ophalen_request_handler();
+        },
+        
+        klasSelected: function(e) {
+        	this._klas_selected = this.$.klassenLijst.itemForElement(e.target);
+        	console.log("klasSelected: " + this.$.klassenLijst.itemForElement(e.target).klasCode);
+        	this._presentie_ophalen_request_handler();
+        	this._studenten_ophalen_request_handler();
+        	this.$.table.hidden = false;
+        },
+        
+        _vakken_ophalen_request_handler: function() {
+          console.log("_vakken_ophalen_request_handler user="+this.c_username);
+          this.$.ajax_vakken_ophalen.contentType="application/json";
+          this.$.ajax_vakken_ophalen.body={
+            "username":this.c_username
+          };
+          this.$.ajax_vakken_ophalen.generateRequest();
+        },
+        
+        _vakken_ophalen_response_handler: function(request) {
+          console.log("_vakken_ophalen_response_handler aantal vakken="+request.detail.response.length);
+          this._c_vakken= request.detail.response;
+        },
+        
+        _klassen_ophalen_request_handler: function() {
+            console.log("_klassen_ophalen_request_handler user: " + this.c_username
+            		+ " vakCode: " + this._vak_selected.vakCode);
+            this.$.ajax_klassen_ophalen.contentType="application/json";
+            this.$.ajax_klassen_ophalen.body={
+              "username":this.c_username,
+              "vakCode":this._vak_selected.vakCode
+            };
+          this.$.ajax_klassen_ophalen.generateRequest();
+        },
+          
+        _klassen_ophalen_response_handler: function(request) {
+          console.log("_klassen_ophalen_response_handler aantal klassen="+request.detail.response.length);
+          this._c_klassen= request.detail.response;
+        },
+        
+        _presentie_ophalen_request_handler: function() {
+            console.log("vakCode: " + this._vak_selected.vakCode
+            		+ " klasCode: " + this._klas_selected.klasCode);
+            this.$.ajax_presentie_ophalen.contentType="application/json";
+            this.$.ajax_presentie_ophalen.body={
+              "vakCode": this._vak_selected.vakCode,
+              "klasCode": this._klas_selected.klasCode
+            };
+            console.log("_presentie_ophalen_request_handler")
+          this.$.ajax_presentie_ophalen.generateRequest();
+        },
+          
+        _presentie_ophalen_response_handler: function(request) {
+          console.log("_presentie_ophalen_response_handler aantal presenties="+request.detail.response.length);
+          this._c_presenties = request.detail.response;
+        },
+        
+        _studenten_ophalen_request_handler: function() {
+            console.log("klasCode: " + this._klas_selected.klasCode);
+            this.$.ajax_studenten_ophalen.contentType="application/json";
+            this.$.ajax_studenten_ophalen.body={
+              "klasCode": this._klas_selected.klasCode
+            };
+          this.$.ajax_studenten_ophalen.generateRequest();
+        },
+          
+        _studenten_ophalen_response_handler: function(request) {
+          console.log("_studenten_ophalen_response_handler aantal studenten="+request.detail.response.length);
+          this._c_studenten = request.detail.response;
         },
 
        _toast_clicked: function(e) {
