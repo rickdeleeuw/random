@@ -97,20 +97,16 @@
       	<th class="studentnummer">Studentnummer</th>
         <th class="voornaam">Voornaam</th>
         <th class="achternaam">Achternaam</th>
-        <template is="dom-repeat" items="[[_c_presenties]]">
-          <th class="aanwezig-header">[[item.datum]]</th>
-        </template>
+        <th class="aanwezig-header">datum</th>
       </tr>
-      <template is="dom-repeat" items="[[_c_studenten]]">
+      <template is="dom-repeat" items="[[_c_presenties]]">
         <tr>
           <td class="studentnummer">[[item.id]]</td>
           <td class="voornaam">[[item.firstName]]</td>
           <td class="achternaam">[[item.lastName]]</td>
-          <template is="dom-repeat" items="[[_c_presenties]]">
-            <td class="groepid">
+          <td class="aanwezig">[[item.aanwezig]]
               <paper-checkbox checked class="my-check"></paper-checkbox>
-      	    </td>
-      	  </template>
+      	  </td>
         </tr>
       </template>
     </table>
@@ -190,6 +186,10 @@
             type: String,
             value: "[[c_username]]",
           },
+          c_systeemdatumlokaal: {
+        	type: String,
+        	value: "[[_systeemdatumlokaal]]",
+          },
           c_visible: {
             type: Boolean,                                      /* true when element is the active visible item */
             value: false,
@@ -232,7 +232,6 @@
         	this._klas_selected = this.$.klassenLijst.itemForElement(e.target);
         	console.log("klasSelected: " + this.$.klassenLijst.itemForElement(e.target).klasCode);
         	this._presentie_ophalen_request_handler();
-        	this._studenten_ophalen_request_handler();
         	this.$.table.hidden = false;
         },
         
@@ -268,11 +267,13 @@
         
         _presentie_ophalen_request_handler: function() {
             console.log("vakCode: " + this._vak_selected.vakCode
-            		+ " klasCode: " + this._klas_selected.klasCode);
+            		+ " klasCode: " + this._klas_selected.klasCode
+            		+ " systeemdatum: " + this.c_systeemdatumlokaal);
             this.$.ajax_presentie_ophalen.contentType="application/json";
             this.$.ajax_presentie_ophalen.body={
               "vakCode": this._vak_selected.vakCode,
-              "klasCode": this._klas_selected.klasCode
+              "klasCode": this._klas_selected.klasCode,
+              "systeemDatum": this.c_systeemdatumlokaal
             };
             console.log("_presentie_ophalen_request_handler")
           this.$.ajax_presentie_ophalen.generateRequest();
@@ -280,7 +281,12 @@
           
         _presentie_ophalen_response_handler: function(request) {
           console.log("_presentie_ophalen_response_handler aantal presenties="+request.detail.response.length);
-          this._c_presenties = request.detail.response;
+          if (request.detail.response.length > 0) {
+        	  this.$.table.hidden = false;
+              this._c_presenties = request.detail.response; 
+          } else {
+       		this.$.table.hidden = true;
+          }
         },
         
         _studenten_ophalen_request_handler: function() {

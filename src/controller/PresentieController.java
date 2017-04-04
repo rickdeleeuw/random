@@ -1,5 +1,6 @@
 package controller;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
@@ -13,6 +14,7 @@ import model.klas.Klas;
 import model.les.Les;
 import model.persoon.Docent;
 import model.persoon.Student;
+import model.presentie.Presentie;
 import model.vak.Vak;
 import server.Conversation;
 import server.Handler;
@@ -116,6 +118,81 @@ class PresentieController implements Handler {
 	public void presentie_ophalen(Conversation conversation) {
 		JsonObject lJsonObjectIn = (JsonObject) conversation.getRequestBodyAsJSON();
 		System.out.println("jsonobj: " + lJsonObjectIn);
+		
+		String lKlasCode = lJsonObjectIn.getString("klasCode");
+		String lVakCode = lJsonObjectIn.getString("vakCode");
+		String lSysteemDatum = lJsonObjectIn.getString("systeemDatum");
+		System.out.println("Vak, klas en datum uit json: " + lVakCode + ", " + lKlasCode + ", " + lSysteemDatum);
+		
+		Klas lKlas = null;
+				for (Klas k : informatieSysteem.getDeKlassen()) {
+			if (k.getKlasCode().equals(lKlasCode)) {
+				lKlas = k;
+			}
+		}
+		System.out.println("klascode van klas: " + lKlas.getKlasCode());
+				
+		Vak lVak = null;
+		for (Vak v : informatieSysteem.getDeVakken()) {
+			if (v.getVakCode().equals(lVakCode)) {
+				lVak = v;
+			}
+		}
+		System.out.println("vakcode van vak: " + lVak.getVakCode());
+		
+		ArrayList<Les> lLessen = new ArrayList<Les>();
+		for (Les l : informatieSysteem.getDeLessen()) {
+			if (l.getDeKlas().equals(lKlas) &&
+					l.getHetVak().equals(lVak)) {
+				lLessen.add(l);
+				System.out.println("les: " + l);
+			}
+		}
+		System.out.println("lessen: " + lLessen);
+		
+		Les lLes = null;
+		String[] systeemDatumElements = lSysteemDatum.split("-");
+		LocalDate systeemDatumLocalDate = LocalDate.of(Integer.parseInt(systeemDatumElements[2]),
+													Integer.parseInt(systeemDatumElements[1]),
+													Integer.parseInt(systeemDatumElements[0]));
+		for (Les l : lLessen) {
+			if (l.getDatum().equals(systeemDatumLocalDate)) {
+				lLes = l;
+			}
+		}
+		
+		ArrayList<Student> lStudenten = new ArrayList<Student>();
+		for (Student s : lKlas.getStudenten()) {
+			lStudenten.add(s);
+			System.out.println(s.getStudentNummer());
+		}
+		
+		JsonObjectBuilder lJsonObjectBuilder = Json.createObjectBuilder();
+		JsonArrayBuilder lJsonArrayBuilder = Json.createArrayBuilder();
+		
+		
+		if (lLes != null) {
+			for (Student s : lStudenten) {
+				Presentie lPresentie = new Presentie(lLes,s);
+				if (!(informatieSysteem.getDePresenties().contains(lPresentie))) {
+					informatieSysteem.getDePresenties().add(lPresentie);
+				} else {
+					for (Presentie p : informatieSysteem.getDePresenties()) {
+						if (p.equals(lPresentie)) {
+							lPresentie = p;
+						}
+					}
+				}
+			
+				lJsonObjectBuilder.add("firstName", s.getVoornaam())
+									.add("lastName", s.getVolledigeAchternaam())
+									.add("id", s.getStudentNummer())
+									.add("aanwezig", lPresentie.getAanwezig());
+				lJsonArrayBuilder.add(lJsonObjectBuilder);
+			}
+		}
+		/*JsonObject lJsonObjectIn = (JsonObject) conversation.getRequestBodyAsJSON();
+		System.out.println("jsonobj: " + lJsonObjectIn);
 		String lKlasCode = lJsonObjectIn.getString("klasCode");
 		String lVakCode = lJsonObjectIn.getString("vakCode");
 		System.out.println("Vak en klas uit json: " + lVakCode + ", " + lKlasCode);
@@ -146,15 +223,57 @@ class PresentieController implements Handler {
 		ArrayList<Student> lStudenten = new ArrayList<Student>();
 		for (Student s : lKlas.getStudenten()) {
 			lStudenten.add(s);
+			System.out.println(s.getGebruikersnaam());
 		}
 		
 		JsonObjectBuilder lJsonObjectBuilder = Json.createObjectBuilder();
 		JsonArrayBuilder lJsonArrayBuilder = Json.createArrayBuilder();
 		
-		for (Les l : lLessen) {
-			lJsonObjectBuilder.add("datum", l.getDatum().format(DateTimeFormatter.ofPattern("dd LLLL yyyy")));
+		
+		for (Student s : lStudenten) {
+			lJsonObjectBuilder.add("id", s.getStudentNummer());
+			System.out.println(s.getStudentNummer());
+			for (Les l : lLessen) {
+				Presentie lPresentie = new Presentie(l, s);
+				if (!informatieSysteem.getDePresenties().contains(lPresentie)) {
+					System.out.println(lPresentie.getDeLes().getDatum() + ",   " + lPresentie.getDeStudent().getStudentNummer());
+					informatieSysteem.addPresentie(lPresentie);
+				} else {
+					for (Presentie p : informatieSysteem.getDePresenties()) {
+						if (lPresentie.equals(p)) {
+							lPresentie = p;
+						}
+					}
+				}
+					lJsonObjectBuilder.add("aanwezig", lPresentie.getAanwezig())
+										.add("datum", lPresentie.getDeLes().getDatum()
+												.format(DateTimeFormatter.ofPattern("dd LLLL yyyy")));
+			}
 			lJsonArrayBuilder.add(lJsonObjectBuilder);
-		}
+		}*/
+		
+		/*	for (Les l : lLessen) {
+				for (Student s : lStudenten) {
+					lJsonObjectBuilder.add("id", s.getStudentNummer());
+					System.out.println(s.getStudentNummer());
+				Presentie lPresentie = new Presentie(l, s);
+				if (!informatieSysteem.getDePresenties().contains(lPresentie)) {
+					System.out.println(lPresentie.getDeLes().getDatum() + ",   " + lPresentie.getDeStudent().getStudentNummer());
+					informatieSysteem.addPresentie(lPresentie);
+				} else {
+					for (Presentie p : informatieSysteem.getDePresenties()) {
+						if (lPresentie.equals(p)) {
+							lPresentie = p;
+						}
+					}
+				}
+					lJsonObjectBuilder.add("aanwezig", lPresentie.getAanwezig())
+										.add("datum", lPresentie.getDeLes().getDatum()
+												.format(DateTimeFormatter.ofPattern("dd LLLL yyyy")));
+				lJsonArrayBuilder.add(lJsonObjectBuilder);
+				}
+			
+		}*/
 		
 		String lJsonOutStr = lJsonArrayBuilder.build().toString();
 		System.out.println(lJsonOutStr);

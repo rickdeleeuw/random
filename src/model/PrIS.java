@@ -388,4 +388,12 @@ public class PrIS {
 	public ArrayList<Klas> getDeKlassen() {
 		return deKlassen;
 	}
+	
+	public ArrayList<Presentie> getDePresenties() {
+		return dePresenties;
+	}
+	
+	public void addPresentie(Presentie p) {
+		dePresenties.add(p);
+	}
 }

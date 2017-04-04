@@ -82,4 +82,21 @@ public class Les {
 	public void setDeKlas(Klas deKlas) {
 		this.deKlas = deKlas;
 	}
+	
+	public boolean equals(Object andereObj) {
+		boolean gelijkeObjecten = false;
+		if (andereObj instanceof Les) {
+			Les andereLes = (Les) andereObj;
+			if (this.beginTijd.equals(andereLes.beginTijd) &&
+					this.eindTijd.equals(andereLes.eindTijd) &&
+					this.datum.equals(andereLes.datum) &&
+					this.deDocent.equals(andereLes.deDocent) &&
+					this.deKlas.equals(andereLes.deKlas) &&
+					this.hetVak.equals(andereLes.hetVak) &&
+					this.lokaal.equals(andereLes.lokaal)) {
+				gelijkeObjecten = true;
+			}
+		}
+		return gelijkeObjecten;
+	}
 }

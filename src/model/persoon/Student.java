@@ -5,6 +5,7 @@ public class Student extends Persoon {
 
 	private int studentNummer;
 	private String groepId;
+	private boolean ziek;
 
 	public Student(
 		String pVoornaam, 
@@ -21,6 +22,7 @@ public class Student extends Persoon {
 			pGebruikersnaam);
 		this.setStudentNummer(pStudentNummer);
 		this.setGroepId("");
+		this.ziek = false;
 	}
 
 
@@ -38,6 +40,21 @@ public class Student extends Persoon {
 
 	private void setStudentNummer(int pStudentNummer) {
 		this.studentNummer = pStudentNummer;
+	}
+	
+	public boolean equals(Object andereObj) {
+		boolean gelijkeObjecten = false;
+		if (andereObj instanceof Student) {
+			Student andereStudent = (Student) andereObj;
+			if (this.groepId.equals(andereStudent.groepId) &&
+					this.studentNummer == andereStudent.studentNummer &&
+					this.getGebruikersnaam().equals(andereStudent.getGebruikersnaam()) &&
+					this.getVoornaam().equals(andereStudent.getVoornaam()) &&
+					this.getVolledigeAchternaam().equals(andereStudent.getVolledigeAchternaam())) {
+				gelijkeObjecten = true;
+			}
+		}
+		return gelijkeObjecten;
 	}
 	
 }
